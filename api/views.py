@@ -15,7 +15,6 @@ import io
 
 
 from dotenv import load_dotenv
-import os
 
 
 # Global image description count and last recharge time
@@ -43,7 +42,8 @@ pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesse
 
 def describe_image_with_gpt(base64_image, prompt_text="Describe this image"):
     # Set up the payload for OpenAI API
-    api_key = os.getenv("OPENAI_API_KEY")  # Make sure to set this in your settings
+    # api_key = os.getenv("OPENAI_API_KEY") # Make sure to set this in your settings
+    api_key = os.environ.get("OPENAI_API_KEY") # Make sure to set this in your settings
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
