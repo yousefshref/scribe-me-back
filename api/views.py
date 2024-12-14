@@ -229,12 +229,23 @@ import tempfile
 
 def save_temporary_ppt(uploaded_file):
     """
-    Saves the uploaded file to a temporary location with the proper extension.
+    Saves the uploaded file as a temporary .ppt or .pptx file.
     """
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as temp_file:
-        temp_file.write(uploaded_file.read())
-        temp_file_path = temp_file.name
-    return temp_file_path
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as temp_file:
+            temp_file.write(uploaded_file.read())
+            return temp_file.name
+    except Exception as e:
+        raise Exception(f"Error saving temporary file: {e}")
+
+# def save_temporary_ppt(uploaded_file):
+#     """
+#     Saves the uploaded file to a temporary location with the proper extension.
+#     """
+#     with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as temp_file:
+#         temp_file.write(uploaded_file.read())
+#         temp_file_path = temp_file.name
+#     return temp_file_path
 
 
 # windows
@@ -274,30 +285,85 @@ def save_temporary_ppt(uploaded_file):
 
 # linux
 import subprocess
+# def convert_ppt_to_pptx(ppt_file_path):
+#     try:
+#         # Convert using LibreOffice
+#         pptx_file_path = ppt_file_path + 'x'  # Convert .ppt to .pptx
+#         subprocess.run(["libreoffice", "--headless", "--convert-to", "pptx", ppt_file_path])
+#         return pptx_file_path
+#     except Exception as e:
+#         raise Exception(f"Error converting .ppt to .pptx: {e}")
 def convert_ppt_to_pptx(ppt_file_path):
+    """
+    Converts a .ppt file to .pptx using LibreOffice in headless mode.
+    """
     try:
-        # Convert using LibreOffice
-        pptx_file_path = ppt_file_path + 'x'  # Convert .ppt to .pptx
-        subprocess.run(["libreoffice", "--headless", "--convert-to", "pptx", ppt_file_path])
-        return pptx_file_path
+        # Generate .pptx file path
+        pptx_file_path = ppt_file_path + "x"  # Append 'x' for .pptx
+        # Use LibreOffice to convert
+        result = subprocess.run(
+            ["libreoffice", "--headless", "--convert-to", "pptx", ppt_file_path, "--outdir", os.path.dirname(ppt_file_path)],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        print("LibreOffice output:", result.stdout)
+        print("LibreOffice error (if any):", result.stderr)
+
+        if os.path.exists(pptx_file_path):
+            return pptx_file_path
+        else:
+            raise FileNotFoundError(f"Converted file not found at {pptx_file_path}")
+    except subprocess.CalledProcessError as e:
+        raise Exception(f"LibreOffice conversion failed: {e.stderr}")
     except Exception as e:
         raise Exception(f"Error converting .ppt to .pptx: {e}")
+    
+
+# def extract_content_from_pptx(presentation):
+#     """
+#     Extracts text and images from each slide in a PowerPoint presentation.
+
+#     Args:
+#         presentation (Presentation): The PowerPoint presentation object.
+
+#     Returns:
+#         list: A list of dictionaries, each representing a slide with its text and images.
+#     """
+#     slides_content = []
+
+#     try:
+#         # Iterate through slides
+#         for slide_index, slide in enumerate(presentation.slides, start=1):
+#             slide_data = {"slide_number": slide_index, "texts": [], "images": []}
+
+#             # Extract text from shapes
+#             for shape in slide.shapes:
+#                 if shape.has_text_frame:
+#                     for paragraph in shape.text_frame.paragraphs:
+#                         slide_data["texts"].append(paragraph.text.strip())
+
+#                 # Extract images
+#                 if hasattr(shape, "image"):
+#                     image_stream = shape.image.blob
+#                     image_base64 = base64.b64encode(image_stream).decode("utf-8")
+#                     slide_data["images"].append(image_base64)
+
+#             slides_content.append(slide_data)
+
+#     except Exception as e:
+#         print(f"Error extracting content: {e}")
+
+#     return slides_content
 
 
 def extract_content_from_pptx(presentation):
     """
     Extracts text and images from each slide in a PowerPoint presentation.
-
-    Args:
-        presentation (Presentation): The PowerPoint presentation object.
-
-    Returns:
-        list: A list of dictionaries, each representing a slide with its text and images.
     """
     slides_content = []
 
     try:
-        # Iterate through slides
         for slide_index, slide in enumerate(presentation.slides, start=1):
             slide_data = {"slide_number": slide_index, "texts": [], "images": []}
 
@@ -316,17 +382,21 @@ def extract_content_from_pptx(presentation):
             slides_content.append(slide_data)
 
     except Exception as e:
-        print(f"Error extracting content: {e}")
+        raise Exception(f"Error extracting content from slides: {e}")
 
     return slides_content
 
+
 class PptxProcessorAPIView(APIView):
+    """
+    API Endpoint for processing PowerPoint files.
+    """
     parser_classes = [MultiPartParser]
 
     def post(self, request, *args, **kwargs):
         pptx_file = request.FILES.get("file")
         if not pptx_file:
-            return Response({"error": "No file uploaded."})
+            return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
             # Save the uploaded file as a temporary .ppt file
@@ -342,17 +412,53 @@ class PptxProcessorAPIView(APIView):
             presentation = Presentation(pptx_file_path)
             slides_content = extract_content_from_pptx(presentation)
 
-            # Process image descriptions
+            # Process image descriptions (Placeholder for GPT integration)
             for slide in slides_content:
                 described_images = []
                 for image_base64 in slide["images"]:
-                    description = describe_image_with_gpt(image_base64)
+                    description = self.describe_image_with_gpt(image_base64)
                     described_images.append(description)
                 slide["images"] = described_images
 
-            return Response({"slides": slides_content})
+            return Response({"slides": slides_content}, status=status.HTTP_200_OK)
+
         except Exception as e:
-            return Response({"error": str(e)})
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# class PptxProcessorAPIView(APIView):
+#     parser_classes = [MultiPartParser]
+
+#     def post(self, request, *args, **kwargs):
+#         pptx_file = request.FILES.get("file")
+#         if not pptx_file:
+#             return Response({"error": "No file uploaded."})
+
+#         try:
+#             # Save the uploaded file as a temporary .ppt file
+#             temp_file_path = save_temporary_ppt(pptx_file)
+
+#             # Convert .ppt to .pptx if necessary
+#             if pptx_file.name.lower().endswith(".ppt"):
+#                 pptx_file_path = convert_ppt_to_pptx(temp_file_path)
+#             else:
+#                 pptx_file_path = temp_file_path
+
+#             # Load and process the .pptx file
+#             presentation = Presentation(pptx_file_path)
+#             slides_content = extract_content_from_pptx(presentation)
+
+#             # Process image descriptions
+#             for slide in slides_content:
+#                 described_images = []
+#                 for image_base64 in slide["images"]:
+#                     description = describe_image_with_gpt(image_base64)
+#                     described_images.append(description)
+#                 slide["images"] = described_images
+
+#             return Response({"slides": slides_content})
+#         except Exception as e:
+#             return Response({"error": str(e)})
 
 # class PptxProcessorAPIView(APIView):
 #     parser_classes = [MultiPartParser]
