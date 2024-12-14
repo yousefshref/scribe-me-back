@@ -16,6 +16,9 @@ import io
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
+
 
 # Global image description count and last recharge time
 image_description_count = 20
