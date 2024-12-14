@@ -416,7 +416,7 @@ class PptxProcessorAPIView(APIView):
             for slide in slides_content:
                 described_images = []
                 for image_base64 in slide["images"]:
-                    description = self.describe_image_with_gpt(image_base64)
+                    description = describe_image_with_gpt(image_base64)
                     described_images.append(description)
                 slide["images"] = described_images
 
