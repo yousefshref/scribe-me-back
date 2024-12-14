@@ -36,8 +36,11 @@ import fitz  # PyMuPDF for working with PDFs
 
 from . import models, serializers
 
+# windows
+# pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
 
-pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
+# linux
+pytesseract.pytesseract.tesseract_cmd = '/usr/bin/tesseract'
 
 
 def describe_image_with_gpt(base64_image, prompt_text="Describe this image"):
@@ -214,36 +217,66 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.views import APIView
 from rest_framework.response import Response
 import base64
-import comtypes.client
 import tempfile
 
+import subprocess
+
+
+import tempfile
+
+def save_temporary_ppt(uploaded_file):
+    """
+    Saves the uploaded file to a temporary location with the proper extension.
+    """
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as temp_file:
+        temp_file.write(uploaded_file.read())
+        temp_file_path = temp_file.name
+    return temp_file_path
+
+
+# windows
+# import comtypes.client
+# def convert_ppt_to_pptx(ppt_path):
+#     """
+#     Converts a .ppt file to .pptx using LibreOffice CLI.
+#     Works on both Windows and Linux.
+#     """
+#     try:
+#         if not os.path.exists(ppt_path):
+#             raise RuntimeError(f"Input file not found: {ppt_path}")
+
+#         output_dir = os.path.dirname(ppt_path)
+#         libreoffice_path = "C:\\Program Files\\LibreOffice\\program\\soffice.exe"  # Update for your system
+
+#         command = [
+#             libreoffice_path,
+#             "--headless",  # Run without GUI
+#             "--convert-to", "pptx",  # Conversion format
+#             "--outdir", output_dir,  # Output directory
+#             ppt_path  # Input file
+#         ]
+#         subprocess.run(command, check=True)
+
+#         pptx_path = ppt_path.replace(".ppt", ".pptx")
+#         if not os.path.exists(pptx_path):
+#             raise RuntimeError(f"Conversion failed: .pptx file not found at {pptx_path}")
+
+#         return pptx_path
+#     except subprocess.CalledProcessError as e:
+#         raise RuntimeError(f"LibreOffice conversion failed: {e}")
+#     except Exception as e:
+#         raise RuntimeError(f"Error converting PPT to PPTX: {e}")
+
+
+
+# linux
+import subprocess
 def convert_ppt_to_pptx(ppt_file_path):
-    """
-    Convert a .ppt file to .pptx using PowerPoint application on Windows.
-    
-    Args:
-        ppt_file_path (str): The path to the .ppt file.
-
-    Returns:
-        str: The path to the converted .pptx file.
-    """
     try:
-        powerpoint = comtypes.client.CreateObject("PowerPoint.Application")
-        powerpoint.Visible = 1  # Make PowerPoint visible (optional)
-        
-        # Open the .ppt file
-        presentation = powerpoint.Presentations.Open(ppt_file_path)
-        
-        # Generate a temporary path for the converted .pptx
+        # Convert using LibreOffice
         pptx_file_path = ppt_file_path + 'x'  # Convert .ppt to .pptx
-        
-        # Save as .pptx
-        presentation.SaveAs(pptx_file_path, 24)  # 24 is for .pptx format
-        presentation.Close()
-        powerpoint.Quit()
-        
+        subprocess.run(["libreoffice", "--headless", "--convert-to", "pptx", ppt_file_path])
         return pptx_file_path
-
     except Exception as e:
         raise Exception(f"Error converting .ppt to .pptx: {e}")
 
@@ -284,8 +317,6 @@ def extract_content_from_pptx(presentation):
 
     return slides_content
 
-
-
 class PptxProcessorAPIView(APIView):
     parser_classes = [MultiPartParser]
 
@@ -295,25 +326,20 @@ class PptxProcessorAPIView(APIView):
             return Response({"error": "No file uploaded."})
 
         try:
-            # Save the file to a temporary location
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-                temp_file.write(pptx_file.read())
-                temp_file_path = temp_file.name
+            # Save the uploaded file as a temporary .ppt file
+            temp_file_path = save_temporary_ppt(pptx_file)
 
-            # Check if the file is a .ppt or .pptx
-            if temp_file_path.lower().endswith('.ppt'):
-                # Convert .ppt to .pptx
+            # Convert .ppt to .pptx if necessary
+            if pptx_file.name.lower().endswith(".ppt"):
                 pptx_file_path = convert_ppt_to_pptx(temp_file_path)
             else:
                 pptx_file_path = temp_file_path
 
-            # Load the PowerPoint presentation
+            # Load and process the .pptx file
             presentation = Presentation(pptx_file_path)
-
-            # Extract all text and images from the presentation
             slides_content = extract_content_from_pptx(presentation)
 
-            # Describe images using GPT and replace Base64 strings with descriptions
+            # Process image descriptions
             for slide in slides_content:
                 described_images = []
                 for image_base64 in slide["images"]:
@@ -322,9 +348,48 @@ class PptxProcessorAPIView(APIView):
                 slide["images"] = described_images
 
             return Response({"slides": slides_content})
-
         except Exception as e:
             return Response({"error": str(e)})
+
+# class PptxProcessorAPIView(APIView):
+#     parser_classes = [MultiPartParser]
+
+#     def post(self, request, *args, **kwargs):
+#         pptx_file = request.FILES.get("file")
+#         if not pptx_file:
+#             return Response({"error": "No file uploaded."})
+
+#         try:
+#             # Save the file to a temporary location
+#             with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+#                 temp_file.write(pptx_file.read())
+#                 temp_file_path = temp_file.name
+
+#             # Check if the file is a .ppt or .pptx
+#             if temp_file_path.lower().endswith('.ppt'):
+#                 # Convert .ppt to .pptx
+#                 pptx_file_path = convert_ppt_to_pptx(temp_file_path)
+#             else:
+#                 pptx_file_path = temp_file_path
+
+#             # Load the PowerPoint presentation
+#             presentation = Presentation(pptx_file_path)
+
+#             # Extract all text and images from the presentation
+#             slides_content = extract_content_from_pptx(presentation)
+
+#             # Describe images using GPT and replace Base64 strings with descriptions
+#             for slide in slides_content:
+#                 described_images = []
+#                 for image_base64 in slide["images"]:
+#                     description = describe_image_with_gpt(image_base64)
+#                     described_images.append(description)
+#                 slide["images"] = described_images
+
+#             return Response({"slides": slides_content})
+
+#         except Exception as e:
+#             return Response({"error": str(e)})
 
 
 # class PptxProcessorAPIView(APIView):
