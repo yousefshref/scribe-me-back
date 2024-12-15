@@ -14,9 +14,13 @@ import os
 import io
 
 
-from dotenv import load_dotenv
+# linux
+import os
+from decouple import config, Csv
 
-load_dotenv()
+# windows
+# from dotenv import load_dotenv
+# load_dotenv()
 
 
 
@@ -38,6 +42,9 @@ import fitz  # PyMuPDF for working with PDFs
 
 
 from . import models, serializers
+
+# linux
+OPEN_AI_KEY = config('OPENAI_API_KEY', default='unsafe-secret-key')
 
 # windows
 # pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe'
