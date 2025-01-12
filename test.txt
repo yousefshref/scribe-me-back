@@ -1,3 +1,0 @@
-- check all functions working fine ✅
-- do pdf without image description ✅
-- hide the api key ✅
