@@ -18,6 +18,7 @@ from msrest.authentication import CognitiveServicesCredentials
 import subprocess
 from rest_framework.parsers import MultiPartParser
 from api import models, serializers
+from decouple import Config, Csv
 
 # Global image description count and last recharge time
 image_description_count = 20
@@ -26,14 +27,18 @@ last_recharge_time = datetime.datetime.now()
 # Tesseract OCR configuration
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe' if os.name == 'nt' else '/usr/bin/tesseract'
 
+config = Config()
+
 # Azure Cognitive Services configuration
-subscription_key = os.getenv("AZURE_SUBSCRIPTION_KEY", "default")
+# subscription_key = os.getenv("AZURE_SUBSCRIPTION_KEY", "default")
+subscription_key = config('AZURE_SUBSCRIPTION_KEY', default='default')
 endpoint = os.getenv("AZURE_ENDPOINT", "https://scribemeocr.cognitiveservices.azure.com/")
 computervision_client = ComputerVisionClient(endpoint, CognitiveServicesCredentials(subscription_key))
 
 
 def describe_image_with_gpt(base64_image, prompt_text="Describe this image"):
-    api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set in your environment variables
+    # api_key = os.getenv("OPENAI_API_KEY")  # Ensure this is set in your environment variables
+    api_key = config('OPENAI_API_KEY', default='default')  # Ensure this is set in your environment variables
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
