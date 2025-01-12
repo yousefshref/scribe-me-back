@@ -27,7 +27,7 @@ last_recharge_time = datetime.datetime.now()
 # Tesseract OCR configuration
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe' if os.name == 'nt' else '/usr/bin/tesseract'
 
-config = Config()
+config = Config('.env')
 
 # Azure Cognitive Services configuration
 # subscription_key = os.getenv("AZURE_SUBSCRIPTION_KEY", "default")
