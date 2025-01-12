@@ -18,7 +18,7 @@ from msrest.authentication import CognitiveServicesCredentials
 import subprocess
 from rest_framework.parsers import MultiPartParser
 from api import models, serializers
-from decouple import Config, Csv
+from decouple import config
 
 # Global image description count and last recharge time
 image_description_count = 20
@@ -27,7 +27,6 @@ last_recharge_time = datetime.datetime.now()
 # Tesseract OCR configuration
 pytesseract.pytesseract.tesseract_cmd = 'C:\\Program Files\\Tesseract-OCR\\tesseract.exe' if os.name == 'nt' else '/usr/bin/tesseract'
 
-config = Config('.env')
 
 # Azure Cognitive Services configuration
 # subscription_key = os.getenv("AZURE_SUBSCRIPTION_KEY", "default")
