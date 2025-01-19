@@ -121,6 +121,8 @@ class ExtractTextFromPDFView(APIView):
 
         try:
             text_content = ""
+            image_description_count = 0
+
             with open_pdf(temp_pdf_path) as pdf_document:
                 for page_number, page in enumerate(pdf_document, start=1):
                     text_content += f"Page {page_number}:\n{page.get_text('text')}\n"
@@ -151,16 +153,18 @@ class ExtractTextFromPDFView(APIView):
                                     prompt_text
                                 )
                                 text_content += f"\n Image description on page {page_number}: {gpt_description}\n"
+                                image_description_count += 1
 
                             os.remove(temp_image_path)
 
             os.remove(temp_pdf_path)
-            return Response({"text_content": text_content}, status=status.HTTP_200_OK)
+            return Response({"text_content": text_content, "count": image_description_count}, status=status.HTTP_200_OK)
 
         except Exception as e:
             if os.path.exists(temp_pdf_path):
                 os.remove(temp_pdf_path)
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 
 def save_temporary_ppt(uploaded_file):
@@ -231,6 +235,7 @@ class PptxProcessorAPIView(APIView):
             return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            image_description_count = 0
             temp_file_path = save_temporary_ppt(pptx_file)
 
             pptx_file_path = convert_ppt_to_pptx(temp_file_path) if pptx_file.name.lower().endswith(".ppt") else temp_file_path
@@ -253,9 +258,10 @@ class PptxProcessorAPIView(APIView):
                         }
                         prompt_text = prompt_texts.get(language, "Describe this image in detail.")
                         described_images.append(describe_image_with_gpt(image_base64, prompt_text))
+                        image_description_count += 1
                     slide["images"] = described_images
 
-            return Response({"slides": slides_content}, status=status.HTTP_200_OK)
+            return Response({"slides": slides_content, "count": image_description_count}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
