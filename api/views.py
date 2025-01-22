@@ -127,7 +127,7 @@ class ExtractTextFromPDFView(APIView):
                 for page_number, page in enumerate(pdf_document, start=1):
                     text_content += f"Page {page_number}:\n{page.get_text('text')}\n"
 
-                    if ocr_option or image_description_option:
+                    if str(ocr_option) == 'true' or str(image_description_option) == 'true':
                         for img in page.get_images(full=True):
                             xref = img[0]
                             image_bytes = pdf_document.extract_image(xref)["image"]
@@ -136,12 +136,12 @@ class ExtractTextFromPDFView(APIView):
                                 temp_image.write(image_bytes)
                                 temp_image_path = temp_image.name
 
-                            if ocr_option:
+                            if str(ocr_option) == 'true':
                                 lang_map = {"English": "eng", "Spanish": "spa", "Arabic": "ara"}
                                 lang_code = lang_map.get(language, "eng")
                                 text_content += f"\n OCR Text from image on page {page_number}: {perform_ocr(temp_image_path, lang_code)}\n"
 
-                            if image_description_option:
+                            if str(image_description_option) == 'true':
                                 prompt_texts = {
                                     "English": "Describe this image in detail.",
                                     "Arabic": "صف هذه الصورة بالتفصيل.",
