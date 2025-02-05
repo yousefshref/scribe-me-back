@@ -58,38 +58,73 @@ def describe_image_with_gpt(base64_image, prompt_text="Describe this image"):
     }
 
     response = requests.post("https://api.openai.com/v1/chat/completions", headers=headers, json=payload)
+    print(response)
     response.raise_for_status()
     response_json = response.json()
     return response_json["choices"][0]["message"]["content"]
 
 
+# class DescribeImageView(APIView):
+#     def post(self, request):
+#         image_file = request.FILES.get("image")
+#         language = request.data.get("language", "English")
+
+#         if not image_file:
+#             return Response({"error": "Image file is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+#         try:
+#             image = Image.open(image_file)
+#             buffered = io.BytesIO()
+#             image.save(buffered, format="JPEG")
+#             base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+#             prompt_texts = {
+#                 "English": "Describe this image in detail.",
+#                 "Arabic": "صف هذه الصورة بالتفصيل.",
+#                 "Spanish": "Describe esta imagen en detalle."
+#             }
+#             prompt_text = prompt_texts.get(language, "Describe this image in detail.")
+
+#             description = describe_image_with_gpt(base64_image, prompt_text)
+#             return Response({"description": description}, status=status.HTTP_200_OK)
+
+#         except Exception as e:
+#             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 class DescribeImageView(APIView):
     def post(self, request):
-        image_file = request.FILES.get("image")
+        image_files = request.FILES.getlist("images")  # Get multiple images
         language = request.data.get("language", "English")
+        print(image_files)
+        if not image_files:
+            return Response({"error": "At least one image file is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not image_file:
-            return Response({"error": "Image file is required."}, status=status.HTTP_400_BAD_REQUEST)
+        prompt_texts = {
+            "English": "Describe this image in detail.",
+            "Arabic": "صف هذه الصورة بالتفصيل.",
+            "Spanish": "Describe esta imagen en detalle."
+        }
+        prompt_text = prompt_texts.get(language, "Describe this image in detail.")
+
+        descriptions = []
 
         try:
-            image = Image.open(image_file)
-            buffered = io.BytesIO()
-            image.save(buffered, format="JPEG")
-            base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
+            for image_file in image_files:
+                image = Image.open(image_file)
+                buffered = io.BytesIO()
+                image.save(buffered, format="JPEG")
+                base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
-            prompt_texts = {
-                "English": "Describe this image in detail.",
-                "Arabic": "صف هذه الصورة بالتفصيل.",
-                "Spanish": "Describe esta imagen en detalle."
-            }
-            prompt_text = prompt_texts.get(language, "Describe this image in detail.")
+                description = describe_image_with_gpt(base64_image, prompt_text)
+                descriptions.append({
+                    "filename": image_file.name,
+                    "description": description
+                })
 
-            description = describe_image_with_gpt(base64_image, prompt_text)
-            return Response({"description": description}, status=status.HTTP_200_OK)
+            return Response({"descriptions": descriptions}, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
 
 def perform_ocr(image_path, lang="eng"):
     image = Image.open(image_path)
