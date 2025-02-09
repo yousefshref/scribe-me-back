@@ -144,7 +144,7 @@ class ExtractTextFromPDFView(APIView):
     def post(self, request):
         pdf_file = request.FILES.get("pdf_file")
         ocr_option = request.data.get("ocr", False)
-        remaining_images = int(request.data.get("rImages"),25)
+        remaining_images = int(request.data.get("rImages")) if request.data.get("rImages") else 25
         
         image_description_option = request.data.get("image_description", False)
         language = request.data.get("language", "English")
@@ -268,8 +268,8 @@ class PptxProcessorAPIView(APIView):
         pptx_file = request.FILES.get("file")
         language = request.data.get("language", "English")
         image_description = request.data.get("image_description", 'true')
-        remaining_images = int(request.data.get("rImages"),25)
-
+        remaining_images = int(request.data.get("rImages")) if request.data.get("rImages") else 25
+        print(remaining_images)
         if not pptx_file:
             return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -290,16 +290,21 @@ class PptxProcessorAPIView(APIView):
                 for slide in slides_content:
                     described_images = []
                     for image_base64 in slide["images"]:
-                        prompt_texts = {
-                            "English": "Describe this image in detail.",
-                            "Arabic": "صف هذه الصورة بالتفصيل.",
-                            "Spanish": "Describe esta imagen en detalle."
-                        }
-                        prompt_text = prompt_texts.get(language, "Describe this image in detail.")
-                        described_images.append(describe_image_with_gpt(image_base64, prompt_text))
-                        image_description_count += 1
-                        remaining_images -= 1
+                        if remaining_images > 0:
+                            prompt_texts = {
+                                "English": "Describe this image in detail.",
+                                "Arabic": "صف هذه الصورة بالتفصيل.",
+                                "Spanish": "Describe esta imagen en detalle."
+                            }
+                            prompt_text = prompt_texts.get(language, "Describe this image in detail.")
+                            described_images.append(describe_image_with_gpt(image_base64, prompt_text))
+                            image_description_count += 1
+                            remaining_images -= 1
+                        else:
+                            break  # Exit the loop if no more images need to be described
                     slide["images"] = described_images
+                    if remaining_images == 0:
+                        break  # Exit the outer loop if no more images need to be described
 
             return Response({"slides": slides_content, "count": image_description_count}, status=status.HTTP_200_OK)
 
