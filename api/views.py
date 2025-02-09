@@ -268,6 +268,7 @@ class PptxProcessorAPIView(APIView):
         pptx_file = request.FILES.get("file")
         language = request.data.get("language", "English")
         image_description = request.data.get("image_description", 'true')
+        remaining_images = int(request.data.get("rImages"),25)
 
         if not pptx_file:
             return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
@@ -285,7 +286,7 @@ class PptxProcessorAPIView(APIView):
                 for slide in slides_content:
                     del slide["images"]
 
-            if str(image_description) == 'true':
+            if str(image_description) == 'true' and remaining_images > 0:
                 for slide in slides_content:
                     described_images = []
                     for image_base64 in slide["images"]:
@@ -297,6 +298,7 @@ class PptxProcessorAPIView(APIView):
                         prompt_text = prompt_texts.get(language, "Describe this image in detail.")
                         described_images.append(describe_image_with_gpt(image_base64, prompt_text))
                         image_description_count += 1
+                        remaining_images -= 1
                     slide["images"] = described_images
 
             return Response({"slides": slides_content, "count": image_description_count}, status=status.HTTP_200_OK)
