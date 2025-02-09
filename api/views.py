@@ -144,6 +144,8 @@ class ExtractTextFromPDFView(APIView):
     def post(self, request):
         pdf_file = request.FILES.get("pdf_file")
         ocr_option = request.data.get("ocr", False)
+        remaining_images = int(request.data.get("rImages"),25)
+        
         image_description_option = request.data.get("image_description", False)
         language = request.data.get("language", "English")
 
@@ -176,7 +178,7 @@ class ExtractTextFromPDFView(APIView):
                                 lang_code = lang_map.get(language, "eng")
                                 text_content += f"\n OCR Text from image on page {page_number}: {perform_ocr(temp_image_path, lang_code)}\n"
 
-                            if str(image_description_option) == 'true':
+                            if str(image_description_option) == 'true' and remaining_images > 0:
                                 prompt_texts = {
                                     "English": "Describe this image in detail.",
                                     "Arabic": "صف هذه الصورة بالتفصيل.",
@@ -189,6 +191,7 @@ class ExtractTextFromPDFView(APIView):
                                 )
                                 text_content += f"\n Image description on page {page_number}: {gpt_description}\n"
                                 image_description_count += 1
+                                remaining_images -= 1
 
                             os.remove(temp_image_path)
 
