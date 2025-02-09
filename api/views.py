@@ -301,11 +301,8 @@ class PptxProcessorAPIView(APIView):
                             image_description_count += 1
                             remaining_images -= 1
                         else:
-                            break  # Exit the loop if no more images need to be described
-                    slide["images"] = described_images
-                    if remaining_images == 0:
-                        break  # Exit the outer loop if no more images need to be described
-
+                            break  # Stop processing if remaining_images reaches 0
+                    slide["images"] = described_images  # Only include processed images
             return Response({"slides": slides_content, "count": image_description_count}, status=status.HTTP_200_OK)
 
         except Exception as e:
