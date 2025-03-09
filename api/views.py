@@ -516,13 +516,13 @@ class PptxProcessorAPIView(APIView):
             image_description_count = 0
             remaining_images_counter = ThreadSafeCounter(remaining_images)
 
-            def extract_content_from_slide(slide):
-                slide_content = {"text": "", "images": []}
+            def extract_content_from_slide(slide, slide_number):
+                slide_content = {"slide_number": slide_number, "texts": "", "images": []}
 
                 # Extract text from slide
                 for shape in slide.shapes:
                     if hasattr(shape, "text") and shape.text.strip():
-                        slide_content["text"] += shape.text.strip() + "\n"
+                        slide_content["texts"] += shape.text.strip() + "\n"
 
                 # Extract images from slide
                 for shape in slide.shapes:
@@ -534,7 +534,7 @@ class PptxProcessorAPIView(APIView):
                 return slide_content
 
             def process_slide(slide, slide_number):
-                extracted_content = extract_content_from_slide(slide)
+                extracted_content = extract_content_from_slide(slide, slide_number)
 
                 if image_description and remaining_images_counter.get_value() > 0:
                     described_images = []
